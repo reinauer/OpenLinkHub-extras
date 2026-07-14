@@ -1,0 +1,19 @@
+[Unit]
+Description=Switch OpenLinkHub LCD image based on system load
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.local/share/OpenLinkHub-extras
+ExecStart=/usr/bin/python3 %h/.local/share/OpenLinkHub-extras/load-lcd/openlinkhub_load_lcd.py --config %h/.config/openlinkhub-extras/load-lcd.json
+Environment=PYTHONDONTWRITEBYTECODE=1
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=read-only
+
+[Install]
+WantedBy=default.target
