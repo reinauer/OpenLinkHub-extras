@@ -1,0 +1,25 @@
+# Copy to /etc/systemd/system/openlinkhub-load-lcd.service.
+# The configuration and image files must be readable by the openlinkhub user.
+[Unit]
+Description=Load-driven OpenLinkHub LCD automation
+Requires=OpenLinkHub.service
+After=OpenLinkHub.service network-online.target
+PartOf=OpenLinkHub.service
+
+[Service]
+Type=simple
+User=openlinkhub
+Group=openlinkhub
+WorkingDirectory=/opt/OpenLinkHub-extras
+ExecStartPre=/usr/bin/curl --fail --silent --max-time 5 http://127.0.0.1:27003/api/
+ExecStart=/usr/bin/python3 /opt/OpenLinkHub-extras/load-lcd/openlinkhub_load_lcd.py --config /etc/openlinkhub-extras/load-lcd.json
+Environment=PYTHONDONTWRITEBYTECODE=1
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,26 @@
+# Copy to /etc/systemd/system/openlinkhub-titan-heartbeat.service.
+# Change --device-id if your NVIDIA device is not nvidiagpu0.
+# A one-second interval limits profile writes; lower it only for short tests.
+[Unit]
+Description=OpenLinkHub TITAN brightness heartbeat
+Requires=OpenLinkHub.service
+After=OpenLinkHub.service network-online.target
+PartOf=OpenLinkHub.service
+
+[Service]
+Type=simple
+User=openlinkhub
+Group=openlinkhub
+WorkingDirectory=/opt/OpenLinkHub-extras
+ExecStartPre=/usr/bin/curl --fail --silent --max-time 5 http://127.0.0.1:27003/api/
+ExecStart=/usr/bin/python3 /opt/OpenLinkHub-extras/titan_heartbeat.py --device-id nvidiagpu0 --period 5 --interval 1
+Environment=PYTHONDONTWRITEBYTECODE=1
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

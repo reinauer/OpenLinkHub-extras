@@ -9,7 +9,7 @@ Everything here uses Python's standard library. Install Python 3 and run OpenLin
 | Tool | Purpose |
 | --- | --- |
 | `load-lcd/openlinkhub_load_lcd.py` | Switches an AIO LCD image at high/low 1-minute system-load thresholds, with optional RGB changes. |
-| `titan_heartbeat.py` | Continuously pulses an OpenLinkHub device's brightness. This is a diagnostic/demo tool for supported NVIDIA GPU lighting; it is not installed as a service. |
+| `titan_heartbeat.py` | Pulses an OpenLinkHub device's brightness. It is primarily a diagnostic/demo tool for supported NVIDIA GPU lighting, with an optional throttled system-service example. |
 
 ## Load-driven LCD automation
 
@@ -41,12 +41,54 @@ The LCD tool uploads two images, sets the LCD to image mode, then switches image
 
 ### Configuration notes
 
-- Image filenames must have an alphanumeric stem, such as `water-load.gif`; OpenLinkHub accepts GIF, JPG/JPEG, WebP, and BMP files up to 5 MiB.
+- Image filenames must have an alphanumeric stem, such as `water.gif`; OpenLinkHub accepts GIF, JPG/JPEG, WebP, and BMP files up to 5 MiB.
 - `fan_channels`, `ring_channels`, and `memory_channels` are comma-separated channel IDs. An empty string enables auto-discovery for fan/memory channels; set `ring_channels` to `none` to leave the LCD ring unchanged.
 - The example sets `no_memory_rgb` to `true`, so it works without a memory RGB device. Set it to `false` and provide `memory_device_id` to include memory RGB.
 - Set `no_rgb` to `true` to make the tool control only the LCD.
 - A host load average is not normalized by CPU count. Choose thresholds for your own machine.
 - Command-line options override values in the JSON file. Run `python3 load-lcd/openlinkhub_load_lcd.py --help` for the full option list.
+
+### Run as a system service
+
+OpenLinkHub installations that use the standard `OpenLinkHub.service` should use the two examples in [`systemd/system`](systemd/system). They run as the `openlinkhub` user, require OpenLinkHub to be running, and restart whenever that service restarts.
+
+```bash
+sudo git clone https://github.com/reinauer/OpenLinkHub-extras.git /opt/OpenLinkHub-extras
+sudo install -d -m 0755 /etc/openlinkhub-extras/images
+sudo install -m 0644 /opt/OpenLinkHub-extras/load-lcd/sun.gif /etc/openlinkhub-extras/images/
+sudo install -m 0644 /opt/OpenLinkHub-extras/load-lcd/water.gif /etc/openlinkhub-extras/images/
+sudo install -m 0644 /opt/OpenLinkHub-extras/config/load-lcd.system.example.json \
+    /etc/openlinkhub-extras/load-lcd.json
+sudoedit /etc/openlinkhub-extras/load-lcd.json
+```
+
+Set your LCD `device_id` in `/etc/openlinkhub-extras/load-lcd.json`. To include memory RGB, set `no_memory_rgb` to `false` and provide its `memory_device_id`. List detected device IDs with:
+
+```bash
+curl -s http://127.0.0.1:27003/api/devices/ | jq -r '.devices | keys[]'
+```
+
+```bash
+sudo install -m 0644 /opt/OpenLinkHub-extras/systemd/system/openlinkhub-load-lcd.service \
+    /etc/systemd/system/
+sudo install -m 0644 /opt/OpenLinkHub-extras/systemd/system/openlinkhub-titan-heartbeat.service \
+    /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now openlinkhub-load-lcd.service openlinkhub-titan-heartbeat.service
+```
+
+Check the services and follow their logs with:
+
+```bash
+sudo systemctl status openlinkhub-load-lcd.service openlinkhub-titan-heartbeat.service
+sudo journalctl -u openlinkhub-load-lcd.service -u openlinkhub-titan-heartbeat.service -f
+```
+
+The TITAN service uses a one-second update interval to limit profile writes. It is included as an example but is not recommended for permanent use with the current native GPU implementation, which saves the device profile for every update. Leave it disabled unless you explicitly want that effect:
+
+```bash
+sudo systemctl disable --now openlinkhub-titan-heartbeat.service
+```
 
 ### Run as a user service
 
